@@ -21,27 +21,13 @@ export default function App() {
   const fetchTrending = async (reg) => {
     setLoading(true); setError(""); setData(null);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
-          system: "You are a YouTube data analyst. Return ONLY valid JSON no markdown. Schema: {videos:[{rank,title,channel,category,views,likes,published,url}],fetchedAt}. Return 20+ videos. Categories in English.",
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: "Find top 20 trending YouTube videos right now in region " + reg + ". Return JSON only." }]
-        })
-      });
+      const res = await fetch("/api/trending?region=" + reg);
       const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      const textBlock = json.content?.find(b => b.type === "text");
-      if (!textBlock) throw new Error("No response");
-      let raw = textBlock.text.trim().replace(/```[a-z]*/g,"").replace(/```/g,"").trim();
-      const parsed = JSON.parse(raw);
-      if (!parsed.videos) throw new Error("Invalid format");
+      if (json.error) throw new Error(json.error);
+      if (!json.videos) throw new Error("Sem dados");
       const byCat = {};
-      parsed.videos.forEach(v => { const c = v.category||"Other"; if (!byCat[c]) byCat[c]=[]; byCat[c].push(v); });
-      setData({ videos: parsed.videos, byCat });
+      json.videos.forEach(v => { const c = v.category||"Other"; if (!byCat[c]) byCat[c]=[]; byCat[c].push(v); });
+      setData({ videos: json.videos, byCat });
     } catch(e) { setError(e.message); }
     setLoading(false);
   };
@@ -53,7 +39,7 @@ export default function App() {
   return (
     <div style={{fontFamily:"system-ui",background:"#0f0f0f",minHeight:"100vh",color:"#fff"}}>
       <div style={{background:"#ff0000",padding:"16px 24px",display:"flex",alignItems:"center",gap:12}}>
-        <span style={{fontSize:28}}>Play</span>
+        <span style={{fontSize:28}}>▶</span>
         <div><div style={{fontWeight:700,fontSize:18}}>YouTube Trending Analyzer</div><div style={{fontSize:12,opacity:0.85}}>Videos mais vistos por categoria</div></div>
       </div>
       <div style={{padding:"20px 24px"}}>
@@ -65,7 +51,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        {!data&&!loading&&!error&&<div style={{textAlign:"center",padding:60,color:"#aaa"}}><div style={{fontSize:48,marginBottom:16}}>Play</div><div>Selecione uma regiao para comecar</div></div>}
+        {!data&&!loading&&!error&&<div style={{textAlign:"center",padding:60,color:"#aaa"}}><div style={{fontSize:48,marginBottom:16}}>▶</div><div>Selecione uma regiao para comecar</div></div>}
         {loading&&<div style={{textAlign:"center",padding:60,color:"#aaa"}}>Buscando trending...</div>}
         {error&&<div style={{background:"#2a0000",border:"1px solid #ff4444",borderRadius:10,padding:16,color:"#ff8888"}}>Erro: {error}</div>}
         {data&&!loading&&(
@@ -84,6 +70,7 @@ export default function App() {
             {activeTab==="ranking"&&data.videos.slice(0,20).map((v,i)=>(
               <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:"1px solid #1f1f1f"}}>
                 <div style={{width:32,textAlign:"center",fontWeight:700,color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:"#666"}}>#{i+1}</div>
+                {v.thumb&&<img src={v.thumb} alt="" style={{width:56,height:42,borderRadius:4,objectFit:"cover"}}/>}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:600,fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{v.title}</div>
                   <div style={{fontSize:11,color:"#888"}}>{v.channel} · {v.category}</div>
