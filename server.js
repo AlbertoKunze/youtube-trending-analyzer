@@ -6,21 +6,19 @@ app.use(express.static(path.join(__dirname, 'build')));
 
 const YT_KEY = process.env.YOUTUBE_API_KEY;
 
-// Detect music subcategory from title/channel/tags
-function detectSubcategory(title, channel, desc) {
-  const t = (title + ' ' + channel + ' ' + (desc||'')).toLowerCase();
-  if (t.match(/funk|baile|pancadao|brega/)) return 'Funk';
-  if (t.match(/sertanejo|sertanej|country brasil/)) return 'Sertanejo';
+function detectGenre(title, channel) {
+  const t = (title + ' ' + channel).toLowerCase();
+  if (t.match(/funk|baile|pancadao|brega funk|mc /)) return 'Funk';
+  if (t.match(/sertanejo|sertanej/)) return 'Sertanejo';
   if (t.match(/pagode|samba|boteco/)) return 'Pagode / Samba';
-  if (t.match(/rap|trap|hip.?hop|mc |freestyle|cypher/)) return 'Rap / Trap';
-  if (t.match(/gospel|louvor|adoracao|worship|hillsong|jesus|cristo/)) return 'Gospel';
-  if (t.match(/axe|forro|xote|arrasta|piseiro|pisadinha/)) return 'Forro / Axe';
-  if (t.match(/pop|hit|oficial|clipe oficial/) && !t.match(/funk|sertanejo/)) return 'Pop';
+  if (t.match(/\btrap\b|\brap\b|hip.?hop|freestyle|cypher/)) return 'Rap / Trap';
+  if (t.match(/gospel|louvor|adoracao|worship|jesus cristo|hillsong/)) return 'Gospel';
+  if (t.match(/forro|xote|arrasta|piseiro|pisadinha|axe|ax\xe9/)) return 'Forro / Axe';
+  if (t.match(/kpop|k-pop|bts|blackpink|twice|aespa|nct|stray kids/)) return 'K-Pop';
   if (t.match(/rock|metal|punk|indie|alternativo/)) return 'Rock';
-  if (t.match(/eletronic|eletro|dj |remix|dance|house|edm/)) return 'Eletronica';
-  if (t.match(/kpop|k-pop|bts|blackpink|twice|nct|aespa/)) return 'K-Pop';
-  if (t.match(/reggaeton|reggae|dancehall|latin|latin pop/)) return 'Reggaeton / Latin';
-  if (t.match(/r&b|rnb|soul|blues/)) return 'R&B / Soul';
+  if (t.match(/eletro|eletronica|dj |remix|\bedm\b|house music/)) return 'Eletronica';
+  if (t.match(/reggaeton|reggae|dancehall|latin pop/)) return 'Reggaeton / Latin';
+  if (t.match(/\br&b\b|rnb|soul|blues/)) return 'R&B / Soul';
   return 'Pop';
 }
 
@@ -29,7 +27,7 @@ app.get('/api/trending', async (req, res) => {
   try {
     let videos = [], pageToken = '';
     for (let i = 0; i < 2; i++) {
-      // videoCategoryId=10 = Music on YouTube
+      // videoCategoryId=10 filtra apenas MUSICA
       const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode=${region}&videoCategoryId=10&maxResults=50&key=${YT_KEY}${pageToken ? '&pageToken=' + pageToken : ''}`;
       const r = await fetch(url);
       const j = await r.json();
@@ -43,7 +41,7 @@ app.get('/api/trending', async (req, res) => {
       rank: i + 1,
       title: v.snippet.title,
       channel: v.snippet.channelTitle,
-      category: detectSubcategory(v.snippet.title, v.snippet.channelTitle, v.snippet.description),
+      genre: detectGenre(v.snippet.title, v.snippet.channelTitle),
       views: parseInt(v.statistics?.viewCount || 0),
       likes: parseInt(v.statistics?.likeCount || 0),
       comments: parseInt(v.statistics?.commentCount || 0),
@@ -63,4 +61,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Server on port ' + PORT));
+app.listen(PORT, () => console.log('Music Trending server on port ' + PORT));
